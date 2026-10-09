@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Carton Box Designer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Ensuring the canvas container takes up necessary space */
+        #canvas-container { width: 100%; height: 100%; min-height: 400px; }
+        canvas { display: block; outline: none; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Left Sidebar: Controls -->
+    <div class="w-full md:w-1/3 lg:w-1/4 bg-white shadow-xl z-10 flex flex-col h-full overflow-y-auto">
+        <div class="p-6 border-b border-gray-200 bg-indigo-600 text-white">
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                Box Designer
+            </h1>
+            <p class="text-sm text-indigo-200 mt-1">Configure dimensions & mockups</p>
+        </div>
+
+        <div class="p-6 flex-grow space-y-6">
+            <!-- Dimensions Section -->
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">1. Dimensions (cm)</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Length (X)</label>
+                        <input type="range" id="length-slider" min="5" max="300" value="150" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>5cm</span><span id="length-val" class="font-bold text-indigo-600">150cm</span><span>300cm</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Width / Depth (Z)</label>
+                        <input type="range" id="width-slider" min="5" max="300" value="150" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>5cm</span><span id="width-val" class="font-bold text-indigo-600">150cm</span><span>300cm</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Height (Y)</label>
+                        <input type="range" id="height-slider" min="5" max="300" value="150" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>5cm</span><span id="height-val" class="font-bold text-indigo-600">150cm</span><span>300cm</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mockup Texture Section -->
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">2. Design Mockups</h2>
+                <div class="space-y-4">
+                    <!-- Front & Back Upload -->
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <label class="block text-xs font-semibold text-gray-700 mb-2">Front & Back Panels (Length x Height)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="file" id="upload-fb" class="text-xs w-full text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer" accept="image/png, image/jpeg">
+                            <button id="remove-fb" class="hidden text-xs bg-red-100 text-red-600 hover:bg-red-200 py-1.5 px-3 rounded-md font-semibold transition">Clear</button>
+                        </div>
+                    </div>
+
+                    <!-- Sides Upload -->
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <label class="block text-xs font-semibold text-gray-700 mb-2">Side Panels (Width x Height)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="file" id="upload-sides" class="text-xs w-full text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer" accept="image/png, image/jpeg">
+                            <button id="remove-sides" class="hidden text-xs bg-red-100 text-red-600 hover:bg-red-200 py-1.5 px-3 rounded-md font-semibold transition">Clear</button>
+                        </div>
+                    </div>
+
+                    <!-- Top & Bottom Upload -->
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <label class="block text-xs font-semibold text-gray-700 mb-2">Top & Bottom (Length x Width)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="file" id="upload-tb" class="text-xs w-full text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer" accept="image/png, image/jpeg">
+                            <button id="remove-tb" class="hidden text-xs bg-red-100 text-red-600 hover:bg-red-200 py-1.5 px-3 rounded-md font-semibold transition">Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Section -->
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">3. Export Dieline (RSC)</h2>
+                <p class="text-xs text-gray-500 mb-3">Generates an RSC (Regular Slotted Carton) SVG vector dieline perfect for <b>Adobe Illustrator (.ai)</b> or <b>CorelDRAW (.cdr)</b>.</p>
+                <div class="space-y-2">
+                    <button id="export-svg" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-md shadow transition flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Download Vector Dieline (SVG)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Content: 3D Viewport -->
+    <div class="w-full md:w-2/3 lg:w-3/4 h-full relative bg-gray-200">
+        <!-- Floating toolbar inside 3D view -->
+        <div class="absolute top-4 right-4 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm text-sm text-gray-700 flex items-center gap-4 z-10">
+            <span class="flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                Left Click: Rotate
+            </span>
+            <span class="flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l4-4 4 4"/><path d="M9 5v14"/><path d="M19 15l-4 4-4-4"/><path d="M15 19V5"/></svg>
+                Scroll: Zoom
+            </span>
+        </div>
+        <div id="canvas-container"></div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const lengthSlider = document.getElementById('length-slider');
+        const widthSlider = document.getElementById('width-slider');
+        const heightSlider = document.getElementById('height-slider');
+        const lengthVal = document.getElementById('length-val');
+        const widthVal = document.getElementById('width-val');
+        const heightVal = document.getElementById('height-val');
+        
+        const uploadFB = document.getElementById('upload-fb');
+        const removeFB = document.getElementById('remove-fb');
+        const uploadSides = document.getElementById('upload-sides');
+        const removeSides = document.getElementById('remove-sides');
+        const uploadTB = document.getElementById('upload-tb');
+        const removeTB = document.getElementById('remove-tb');
+        
+        const exportSvgBtn = document.getElementById('export-svg');
+        const canvasContainer = document.getElementById('canvas-container');
+
+        // State Variables
+        let boxLength = parseFloat(lengthSlider.value);
+        let boxWidth = parseFloat(widthSlider.value); // Depth in 3D
+        let boxHeight = parseFloat(heightSlider.value);
+        
+        let textureFrontBack = null;
+        let textureSides = null;
+        let textureTopBottom = null;
+
+        // Three.js Variables
+        let scene, camera, renderer, controls;
+        let boxMesh, boxMaterials;
+        
+        // Base material for the box (kraft paper color)
+        const baseColor = 0xeaddc5;
+        
+        // Initialize Application
+        init3D();
+        setupEventListeners();
+
+        function init3D() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf3f4f6); // Tailwind gray-100
+            
+            // Add grid helper
+            const gridHelper = new THREE.GridHelper(2000, 50, 0xd1d5db, 0xe5e7eb);
+            gridHelper.position.y = -100; // Put grid below the box
+            scene.add(gridHelper);
+
+            // Camera setup
+            const aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 5000);
+            camera.position.set(300, 300, 450);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            canvasContainer.appendChild(renderer.domElement);
+
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(200, 400, 200);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            
+            // Increase shadow limits for the larger box
+            directionalLight.shadow.camera.left = -300;
+            directionalLight.shadow.camera.right = 300;
+            directionalLight.shadow.camera.top = 300;
+            directionalLight.shadow.camera.bottom = -300;
+            directionalLight.shadow.camera.far = 2000;
+            
+            scene.add(directionalLight);
+
+            const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+            fillLight.position.set(-200, 80, -200);
+            scene.add(fillLight);
+
+            // Controls setup
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 50;
+            controls.maxDistance = 2000;
+            controls.target.set(0, 0, 0);
+
+            // Create initial box
+            createBox();
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Start animation loop
+            animate();
+        }
+
+        function createBox() {
+            // Remove existing box if any
+            if (boxMesh) {
+                scene.remove(boxMesh);
+                boxMesh.geometry.dispose();
+                boxMaterials.forEach(m => m.dispose());
+            }
+
+            // Create Geometry based on state dimensions
+            // Note: In Three.js, Width is X, Height is Y, Depth is Z.
+            // Our UI calls them: Length(X), Height(Y), Width/Depth(Z).
+            const geometry = new THREE.BoxGeometry(boxLength, boxHeight, boxWidth);
+
+            // Define materials for the 6 faces. Order: right, left, top, bottom, front, back
+            boxMaterials = [
+                createMaterial(), // Right
+                createMaterial(), // Left
+                createMaterial(), // Top
+                createMaterial(), // Bottom
+                createMaterial(), // Front
+                createMaterial()  // Back
+            ];
+
+            // Apply Front/Back textures
+            if (textureFrontBack) {
+                boxMaterials[4].map = textureFrontBack; // Front
+                boxMaterials[5].map = textureFrontBack; // Back
+            }
+            // Apply Sides textures
+            if (textureSides) {
+                boxMaterials[0].map = textureSides; // Right
+                boxMaterials[1].map = textureSides; // Left
+            }
+            // Apply Top/Bottom textures
+            if (textureTopBottom) {
+                boxMaterials[2].map = textureTopBottom; // Top
+                boxMaterials[3].map = textureTopBottom; // Bottom
+            }
+
+            // Update materials to show texture properly over the base color
+            boxMaterials.forEach(mat => {
+                if(mat.map) {
+                    mat.color.setHex(0xffffff); // Set to white so texture colors are visible
+                    mat.needsUpdate = true;
+                }
+            });
+
+            boxMesh = new THREE.Mesh(geometry, boxMaterials);
+            boxMesh.castShadow = true;
+            boxMesh.receiveShadow = true;
+            
+            // Add wireframe to simulate box edges
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true }));
+            boxMesh.add(line);
+
+            scene.add(boxMesh);
+        }
+
+        function createMaterial() {
+            return new THREE.MeshStandardMaterial({ 
+                color: baseColor,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // required if controls.enableDamping or controls.autoRotate are set
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        }
+
+        function setupEventListeners() {
+            // Sliders Event Listeners
+            lengthSlider.addEventListener('input', (e) => {
+                boxLength = parseFloat(e.target.value);
+                lengthVal.textContent = `${boxLength}cm`;
+                createBox();
+            });
+
+            widthSlider.addEventListener('input', (e) => {
+                boxWidth = parseFloat(e.target.value);
+                widthVal.textContent = `${boxWidth}cm`;
+                createBox();
+            });
+
+            heightSlider.addEventListener('input', (e) => {
+                boxHeight = parseFloat(e.target.value);
+                heightVal.textContent = `${boxHeight}cm`;
+                createBox();
+            });
+
+            // Reusable function to handle uploads for different faces
+            function setupTextureUpload(inputElement, textureType, removeBtn) {
+                inputElement.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const imgUrl = event.target.result;
+                            const textureLoader = new THREE.TextureLoader();
+                            textureLoader.load(imgUrl, (texture) => {
+                                texture.colorSpace = THREE.SRGBColorSpace;
+                                
+                                if (textureType === 'FB') textureFrontBack = texture;
+                                if (textureType === 'Sides') textureSides = texture;
+                                if (textureType === 'TB') textureTopBottom = texture;
+                                
+                                createBox();
+                                removeBtn.classList.remove('hidden');
+                            });
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                removeBtn.addEventListener('click', () => {
+                    if (textureType === 'FB') textureFrontBack = null;
+                    if (textureType === 'Sides') textureSides = null;
+                    if (textureType === 'TB') textureTopBottom = null;
+                    
+                    inputElement.value = ''; // Clear input
+                    createBox();
+                    removeBtn.classList.add('hidden');
+                });
+            }
+
+            // Initialize uploads
+            setupTextureUpload(uploadFB, 'FB', removeFB);
+            setupTextureUpload(uploadSides, 'Sides', removeSides);
+            setupTextureUpload(uploadTB, 'TB', removeTB);
+
+            // Export SVG Logic
+            exportSvgBtn.addEventListener('click', generateAndDownloadSVG);
+        }
+
+        function generateAndDownloadSVG() {
+            // Convert cm to mm (standard for vector plotting)
+            const L = boxLength * 10;
+            const W = boxWidth * 10;
+            const H = boxHeight * 10;
+            
+            // RSC (Regular Slotted Carton) specific dimensions
+            const flapH = W / 2; // RSC flaps meet in the middle, so height is exactly half the width
+            const glueW = 30; // 30mm standard glue flap
+            
+            // Padding for the SVG canvas
+            const startX = 40; 
+            const startY = 60; // Extra top padding for legend
+
+            // Calculate total SVG canvas size with padding
+            const totalWidth = startX + glueW + (L * 2) + (W * 2) + 40; 
+            const totalHeight = startY + (flapH * 2) + H + 40; 
+
+            // Calculate X coordinates for vertical panels
+            const x0 = startX;
+            const x1 = x0 + glueW;
+            const x2 = x1 + L;
+            const x3 = x2 + W;
+            const x4 = x3 + L;
+            const x5 = x4 + W;
+
+            // Calculate Y coordinates for horizontal sections
+            const y0 = startY;           // Top edge of top flaps
+            const y1 = y0 + flapH;       // Top crease of main body
+            const y2 = y1 + H;           // Bottom crease of main body
+            const y3 = y2 + flapH;       // Bottom edge of bottom flaps
+
+            // Start building SVG String
+            let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidth} ${totalHeight}" width="${totalWidth}mm" height="${totalHeight}mm">\n`;
+            
+            // Styles mapping directly to standard RSC dielines (Black Cut, Red Crease)
+            svg += `<style>
+                        .cut { fill: none; stroke: #000000; stroke-width: 1; }
+                        .crease { fill: none; stroke: #ff0000; stroke-width: 1; }
+                        .dim { font-family: 'Inter', sans-serif; font-size: 10px; fill: #008000; text-anchor: middle; }
+                        .text { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: bold; fill: #333; text-anchor: middle; }
+                        .legend-text { font-family: 'Inter', sans-serif; font-size: 12px; fill: #333; }
+                    </style>\n`;
+            
+            // -- DRAW CUT LINES (Black) --
+            // Glue Flap Outer Edge (with angled cuts)
+            svg += `<path class="cut" d="M ${x1} ${y1} L ${x0+5} ${y1+5} L ${x0+5} ${y2-5} L ${x1} ${y2}" />\n`;
+            
+            // Top Perimeter & Slits between top flaps
+            svg += `<path class="cut" d="M ${x1} ${y1} L ${x1} ${y0} L ${x5} ${y0} L ${x5} ${y1}" />\n`;
+            svg += `<line class="cut" x1="${x2}" y1="${y0}" x2="${x2}" y2="${y1}" />\n`;
+            svg += `<line class="cut" x1="${x3}" y1="${y0}" x2="${x3}" y2="${y1}" />\n`;
+            svg += `<line class="cut" x1="${x4}" y1="${y0}" x2="${x4}" y2="${y1}" />\n`;
+
+            // Bottom Perimeter & Slits between bottom flaps
+            svg += `<path class="cut" d="M ${x1} ${y2} L ${x1} ${y3} L ${x5} ${y3} L ${x5} ${y2}" />\n`;
+            svg += `<line class="cut" x1="${x2}" y1="${y2}" x2="${x2}" y2="${y3}" />\n`;
+            svg += `<line class="cut" x1="${x3}" y1="${y2}" x2="${x3}" y2="${y3}" />\n`;
+            svg += `<line class="cut" x1="${x4}" y1="${y2}" x2="${x4}" y2="${y3}" />\n`;
+
+            // Far Right edge
+            svg += `<line class="cut" x1="${x5}" y1="${y1}" x2="${x5}" y2="${y2}" />\n`;
+
+            // -- DRAW FOLD / CREASE LINES (Red) --
+            // Horizontal creases (Top and Bottom of main body)
+            svg += `<line class="crease" x1="${x1}" y1="${y1}" x2="${x5}" y2="${y1}" />\n`;
+            svg += `<line class="crease" x1="${x1}" y1="${y2}" x2="${x5}" y2="${y2}" />\n`;
+
+            // Vertical creases (Separating the 4 main panels)
+            svg += `<line class="crease" x1="${x1}" y1="${y1}" x2="${x1}" y2="${y2}" />\n`;
+            svg += `<line class="crease" x1="${x2}" y1="${y1}" x2="${x2}" y2="${y2}" />\n`;
+            svg += `<line class="crease" x1="${x3}" y1="${y1}" x2="${x3}" y2="${y2}" />\n`;
+            svg += `<line class="crease" x1="${x4}" y1="${y1}" x2="${x4}" y2="${y2}" />\n`;
+
+            // -- ADD LABELS & MEASUREMENTS --
+            const cyMain = y1 + (H/2);
+            
+            // Panel 1 (Front/Length)
+            svg += `<text x="${x1 + (L/2)}" y="${cyMain - 5}" class="text">FRONT</text>\n`;
+            svg += `<text x="${x1 + (L/2)}" y="${cyMain + 10}" class="dim">L: ${L}mm x H: ${H}mm</text>\n`;
+            
+            // Panel 2 (Side/Width)
+            svg += `<text x="${x2 + (W/2)}" y="${cyMain - 5}" class="text">SIDE</text>\n`;
+            svg += `<text x="${x2 + (W/2)}" y="${cyMain + 10}" class="dim">W: ${W}mm x H: ${H}mm</text>\n`;
+            
+            // Panel 3 (Back/Length)
+            svg += `<text x="${x3 + (L/2)}" y="${cyMain - 5}" class="text">BACK</text>\n`;
+            svg += `<text x="${x3 + (L/2)}" y="${cyMain + 10}" class="dim">L: ${L}mm x H: ${H}mm</text>\n`;
+            
+            // Panel 4 (Side/Width)
+            svg += `<text x="${x4 + (W/2)}" y="${cyMain - 5}" class="text">SIDE</text>\n`;
+            svg += `<text x="${x4 + (W/2)}" y="${cyMain + 10}" class="dim">W: ${W}mm x H: ${H}mm</text>\n`;
+
+            // Legend Header
+            svg += `<text x="${startX}" y="${startY - 40}" font-family="sans-serif" font-size="16" font-weight="bold" fill="#000">RSC Carton Box Dieline Template</text>\n`;
+
+            // Draw Legend Items
+            svg += `<line class="cut" x1="${startX}" y1="${startY - 20}" x2="${startX + 30}" y2="${startY - 20}" />\n`;
+            svg += `<text x="${startX + 35}" y="${startY - 16}" class="legend-text">Cut Line</text>\n`;
+            
+            svg += `<line class="crease" x1="${startX + 110}" y1="${startY - 20}" x2="${startX + 140}" y2="${startY - 20}" />\n`;
+            svg += `<text x="${startX + 145}" y="${startY - 16}" class="legend-text">Soft Crease</text>\n`;
+
+            svg += `</svg>`;
+
+            // Create download link
+            const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `rsc_dieline_${boxLength}x${boxWidth}x${boxHeight}cm.svg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
